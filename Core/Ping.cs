@@ -1,4 +1,4 @@
-﻿using TShockAPI;
+using TShockAPI;
 
 namespace Chireiden.TShock.Omni;
 
@@ -66,15 +66,17 @@ public partial class Plugin
             {
                 this[whoami]!.OnPingUpdated?.Invoke(DateTime.Now - ping.Start.Value);
             }
-            catch
+            catch (Exception ex)
             {
+                TShockAPI.TShock.Log.Warn($"OnPingUpdated callback failed: {ex.Message}");
             }
             try
             {
                 ping.Callback?.Invoke(whoami, DateTime.Now - ping.Start.Value);
             }
-            catch
+            catch (Exception ex)
             {
+                TShockAPI.TShock.Log.Warn($"Ping callback failed: {ex.Message}");
             }
             finally
             {

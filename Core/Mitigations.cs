@@ -1,4 +1,4 @@
-﻿using Mono.Cecil.Cil;
+using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using Newtonsoft.Json.Linq;
 using System.Collections.Concurrent;
@@ -55,7 +55,7 @@ public partial class Plugin
             case (int) PacketTypes.PlayerInfo when mitigation.AllowCrossJourney:
             {
                 // FIXME: Version specific, might be changed in the future
-                if (Terraria.Main.GameModeInfo.IsJourneyMode == ((args.Instance.readBuffer[args.Length - 1] & 0b1000) == 0))
+                if (Terraria.Main.IsJourneyMode == ((args.Instance.readBuffer[args.Length - 1] & 0b1000) == 0))
                 {
                     args.Instance.readBuffer[args.Length - 1] ^= 0b1000;
                 }
@@ -80,7 +80,7 @@ public partial class Plugin
                 {
                     var existingItem = Terraria.Main.player[index].GetInventory(slot);
                     if (Terraria.Main.player[index].controlUseItem && slot == Terraria.Main.player[index].selectedItem
-                        && type != existingItem.netID && (type != 0 || stack != 0))
+                        && type != existingItem.type && (type != 0 || stack != 0))
                     {
                         this.Statistics.MitigationRejectedSwapWhileUse++;
                         this.Detections.SwapWhileUseDetected(index, slot);
@@ -109,7 +109,7 @@ public partial class Plugin
 
                     if (!existingItem.IsAir || (type != 0 && stack != 0))
                     {
-                        if (existingItem.netID != type || existingItem.stack != stack || existingItem.prefix != prefix)
+                        if (existingItem.type != type || existingItem.stack != stack || existingItem.prefix != prefix)
                         {
                             this.Statistics.MitigationSlotPEAllowed++;
                             break;
@@ -504,12 +504,12 @@ public partial class Plugin
         orig(x, y, doorStyle);
     }
 
-    private void MMHook_Mitigation_TileDropItem(On.Terraria.WorldGen.orig_KillTile_GetItemDrops orig, int x, int y, Terraria.ITile tileCache, out int dropItem, out int dropItemStack, out int secondaryItem, out int secondaryItemStack, bool includeLargeObjectDrops)
+    private void MMHook_Mitigation_TileDropItem(On.Terraria.WorldGen.orig_KillTile_GetItemDrops orig, int x, int y, Terraria.ITile tileCache, out int dropItem, out int dropItemStack, out int secondaryItem, out int secondaryItemStack, out bool noPrefix, bool includeLargeObjectDrops)
     {
         var mitigation = this.config.Mitigation.Value;
         if (mitigation.DisableAllMitigation || !mitigation.OverflowWorldGenItemID)
         {
-            orig(x, y, tileCache, out dropItem, out dropItemStack, out secondaryItem, out secondaryItemStack, includeLargeObjectDrops);
+            orig(x, y, tileCache, out dropItem, out dropItemStack, out secondaryItem, out secondaryItemStack, out noPrefix, includeLargeObjectDrops);
             return;
         }
 
@@ -517,6 +517,7 @@ public partial class Plugin
         dropItemStack = 0;
         secondaryItem = 0;
         secondaryItemStack = 0;
+        noPrefix = false;
 
         if (tileCache.type == Terraria.ID.TileID.Torches)
         {
@@ -543,7 +544,7 @@ public partial class Plugin
             }
         }
 
-        orig(x, y, tileCache, out dropItem, out dropItemStack, out secondaryItem, out secondaryItemStack, includeLargeObjectDrops);
+        orig(x, y, tileCache, out dropItem, out dropItemStack, out secondaryItem, out secondaryItemStack, out noPrefix, includeLargeObjectDrops);
     }
 
     private void MMHook_Mitigation_WorldGenNextCount(On.Terraria.WorldGen.orig_nextCount orig, int x, int y, bool jungle, bool lavaOk)
@@ -616,32 +617,6 @@ public partial class Plugin
             }
         }
         Terraria.WorldGen.numTileCount = Terraria.WorldGen.maxTileCount;
-    }
-
-    private void MMHook_Chest_ServerPlaceItem(On.Terraria.Chest.orig_ServerPlaceItem orig, int plr, int slot)
-    {
-        var mitigation = this.config.Mitigation.Value;
-        if (mitigation.DisableAllMitigation || !mitigation.IncrementalChestStack)
-        {
-            orig(plr, slot);
-            return;
-        }
-
-        if (slot >= Terraria.ID.PlayerItemSlotID.Inventory0)
-        {
-            return;
-        }
-
-        var player = Terraria.Main.player[plr];
-        var inv = player.inventory[slot];
-        var (type, stack) = (inv.type, inv.stack);
-        var newItem = Terraria.Chest.PutItemInNearbyChest(inv, player.Center, plr);
-        var newStack = newItem.stack;
-        if (newStack < stack)
-        {
-            player.inventory[slot] = newItem;
-            Terraria.NetMessage.TrySendData((int) PacketTypes.MassWireOperationPay, plr, number: type, number2: stack - newStack, number3: plr);
-        }
     }
 
     private void GDHook_Mitigation_PlayerBuffUpdate(object? sender, TShockAPI.GetDataHandlers.PlayerBuffUpdateEventArgs args)

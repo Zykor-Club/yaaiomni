@@ -1,4 +1,4 @@
-﻿using System.Buffers;
+using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
 using Terraria.Net;
@@ -95,10 +95,6 @@ internal static class Socket
             var tcpAddress = (TcpAddress) address;
             this._connection!.Connect(tcpAddress.Address, tcpAddress.Port);
             this._remoteAddress = address;
-        }
-
-        void ISocket.SendQueuedPackets()
-        {
         }
 
         bool ISocket.IsDataAvailable()

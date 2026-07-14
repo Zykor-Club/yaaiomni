@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Reflection;
 using TShockAPI;
 using TShockAPI.Hooks;
@@ -187,7 +187,7 @@ public partial class Plugin
         {
             var p = new DummyTSPlayer();
             p.Account.ID = a;
-            var data = new PlayerData(p);
+            var data = new PlayerData();
             var existing = TShockAPI.TShock.CharacterDB.GetPlayerData(p, a);
             if (!resetStyle)
             {
@@ -328,12 +328,22 @@ public partial class Plugin
 
         if (args.Parameters[0] == "-t" && args.Parameters.Count > 1)
         {
-            Task.Run(() => TShockAPI.Commands.HandleCommand(args.Player, args.Parameters[1]));
-            args.Player.SendSuccessMessage($"Background task ({args.Player.Name} @ {args.Parameters[1]}) started.");
+            var cmd = args.Parameters[1];
+            Task.Run(() =>
+            {
+                try { TShockAPI.Commands.HandleCommand(args.Player, cmd); }
+                catch (Exception ex) { TShockAPI.TShock.Log.Error($"Background task failed: {ex}"); }
+            });
+            args.Player.SendSuccessMessage($"Background task ({args.Player.Name} @ {cmd}) started.");
             return;
         }
 
-        System.Threading.ThreadPool.QueueUserWorkItem(_ => TShockAPI.Commands.HandleCommand(args.Player, args.Parameters[0]));
+        var bgCmd = args.Parameters[0];
+        System.Threading.ThreadPool.QueueUserWorkItem(_ =>
+        {
+            try { TShockAPI.Commands.HandleCommand(args.Player, bgCmd); }
+            catch (Exception ex) { TShockAPI.TShock.Log.Error($"Background task failed: {ex}"); }
+        });
         args.Player.SendSuccessMessage($"Background task ({args.Player.Name} @ {args.Parameters[0]}) queued.");
     }
 
