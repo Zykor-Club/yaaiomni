@@ -1,4 +1,4 @@
-﻿﻿using System.Reflection;
+﻿﻿﻿﻿﻿using System.Reflection;
 using Terraria;
 using TerrariaApi.Server;
 using TShockAPI;
@@ -423,6 +423,7 @@ public partial class Plugin : TerrariaPlugin
             AppDomain.CurrentDomain.AssemblyResolve -= this.AssemblyResolveHandler;
             AppDomain.CurrentDomain.FirstChanceException -= this.FirstChanceExceptionHandler;
             this.inFirstChance.Dispose();
+            this._inHasPermission.Dispose();
         }
         base.Dispose(disposing);
     }
