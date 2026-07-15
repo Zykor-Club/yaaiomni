@@ -1,4 +1,4 @@
-﻿﻿using System.Reflection;
+﻿﻿﻿﻿﻿using System.Reflection;
 using Terraria.Localization;
 using TerrariaApi.Server;
 using TShockAPI;

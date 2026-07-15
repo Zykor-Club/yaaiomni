@@ -619,9 +619,23 @@ public partial class Plugin
         Terraria.WorldGen.numTileCount = Terraria.WorldGen.maxTileCount;
     }
 
+    private bool _buffUpdateShortLogged;
+
     private void GDHook_Mitigation_PlayerBuffUpdate(object? sender, TShockAPI.GetDataHandlers.PlayerBuffUpdateEventArgs args)
     {
         var currentPosition = args.Data.Position;
+        var remaining = args.Data.Length - currentPosition;
+        var required = Terraria.Player.maxBuffs * sizeof(ushort);
+        if (remaining < required)
+        {
+            if (!this._buffUpdateShortLogged)
+            {
+                this._buffUpdateShortLogged = true;
+                TShockAPI.TShock.Log.ConsoleWarn($"[Omni] PlayerBuffUpdate packet too short ({remaining}/{required} bytes) detected. This is expected during player loading; subsequent short packets will be skipped silently.");
+            }
+            return;
+        }
+
         for (var i = 0; i < Terraria.Player.maxBuffs; i++)
         {
             var buff = System.IO.Streams.StreamExt.ReadUInt16(args.Data);
