@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Net;
 using System.Runtime.CompilerServices;
 
@@ -98,7 +98,8 @@ public partial class Plugin
             {
                 if (!this._connPool.AttachedData.TryGetValue(Terraria.Netplay.Clients[i].Socket, out var ct))
                 {
-                    throw new Exception("Connection time not found");
+                    TShockAPI.TShock.Log.ConsoleWarn($"Connection time not found for client {i}, skipping timeout check.");
+                    continue;
                 }
 
                 var time = new TimeSpan(DateTime.Now.Ticks).TotalSeconds;

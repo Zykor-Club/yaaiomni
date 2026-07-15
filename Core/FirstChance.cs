@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 
 namespace Chireiden.TShock.Omni;
@@ -7,6 +7,7 @@ public partial class Plugin
 {
     private readonly ThreadLocal<int> inFirstChance = new ThreadLocal<int>(() => 0);
     private readonly HashSet<string> exceptions = [];
+    private const int MaxExceptionEntries = 1000;
 
     private void FirstChanceExceptionHandler(object? sender, FirstChanceExceptionEventArgs args)
     {
@@ -24,6 +25,10 @@ public partial class Plugin
         {
             this.inFirstChance.Value++;
             var v = $"{args.Exception.Message}{Environment.NewLine}{args.Exception.StackTrace}";
+            if (this.exceptions.Count >= MaxExceptionEntries)
+            {
+                this.exceptions.Clear();
+            }
             if (this.exceptions.Add(v))
             {
                 Utils.ShowError($"New First Chance: {v}");

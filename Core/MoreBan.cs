@@ -1,5 +1,4 @@
-﻿using System.Net;
-using System.Reflection;
+using System.Net;
 using System.Text.RegularExpressions;
 using TShockAPI;
 using TShockAPI.DB;
@@ -8,8 +7,7 @@ namespace Chireiden.TShock.Omni;
 
 public partial class Plugin
 {
-    private FieldInfo? _CheckBan_lambda_player;
-    private bool Detour_CheckBan_IP(Func<object, KeyValuePair<int, Ban>, bool> orig, object instance, KeyValuePair<int, Ban> kvp)
+    private bool Detour_CheckBan_IP(Func<BanManager, TSPlayer, bool> orig, BanManager instance, TSPlayer player)
     {
         static bool Match(string pattern, TSPlayer player)
         {
@@ -45,6 +43,11 @@ public partial class Plugin
                     return false;
                 }
 
+                if (ip.AddressFamily != subnetAddr.AddressFamily)
+                {
+                    return false;
+                }
+
                 byte ReverseBits(byte v)
                 {
                     var b = ((v & 0b11110000) >> 4) | ((v & 0b00001111) << 4);
@@ -55,10 +58,15 @@ public partial class Plugin
 
                 System.Collections.BitArray GetBitArray(IPAddress ip) => new System.Collections.BitArray(ip.GetAddressBytes().Select(ReverseBits).ToArray());
 
-                // TODO: net8.0 HasAnySet
-                foreach (bool bit in GetBitArray(ip).Xor(GetBitArray(subnetAddr)).LeftShift(subnetMask))
+                // Check network portion (first subnetMask bits) — if any differ, not a match
+                var xor = GetBitArray(ip).Xor(GetBitArray(subnetAddr));
+                if (subnetMask < 0 || subnetMask > xor.Length)
                 {
-                    if (bit)
+                    return false;
+                }
+                for (var i = 0; i < subnetMask; i++)
+                {
+                    if (xor[i])
                     {
                         return false;
                     }
@@ -71,19 +79,33 @@ public partial class Plugin
 
             return true;
         }
-        if (this._CheckBan_lambda_player == null)
+
+        if (orig(instance, player))
         {
-            this._CheckBan_lambda_player = instance.GetType().GetField("player")!;
+            return true;
         }
-        if (this.config.Enhancements.Value.BanPattern)
+
+        if (!this.config.Enhancements.Value.BanPattern)
         {
-            var player = ((TSPlayer) this._CheckBan_lambda_player.GetValue(instance)!)!;
+            return false;
+        }
+
+        foreach (var kvp in TShockAPI.TShock.Bans.Bans)
+        {
             var ban = kvp.Value;
-            if (Match(ban.Identifier, player))
+            if (Match(ban.Identifier, player) && TShockAPI.TShock.Bans.IsValidBan(ban, player))
             {
-                return TShockAPI.TShock.Bans.IsValidBan(ban, player);
+                if (ban.ExpirationDateTime == DateTime.MaxValue)
+                {
+                    player.Disconnect($"#{ban.TicketNumber} - You are banned: {ban.Reason}");
+                }
+                else
+                {
+                    player.Disconnect($"#{ban.TicketNumber} - You are banned: {ban.Reason} ({ban.GetPrettyExpirationString()} remaining)");
+                }
+                return true;
             }
         }
-        return orig(instance, kvp);
+        return false;
     }
 }

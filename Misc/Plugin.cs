@@ -1,4 +1,4 @@
-﻿using Chireiden.TShock.Omni.Ext;
+using Chireiden.TShock.Omni.Ext;
 using System.Reflection;
 using Terraria;
 using TerrariaApi.Server;
@@ -97,7 +97,7 @@ public partial class Plugin : TerrariaPlugin
         OTAPI.Hooks.MessageBuffer.GetData += this.OTHook_Permission_SummonBoss;
         TShockAPI.GetDataHandlers.TogglePvp.Register(this.GDHook_Permission_TogglePvp);
         TShockAPI.GetDataHandlers.PlayerTeam.Register(this.GDHook_Permission_PlayerTeam);
-        TShockAPI.Hooks.GeneralHooks.ReloadEvent += (args) => this.LoadConfig(TShockAPI.TSPlayer.Server);
+        TShockAPI.Hooks.GeneralHooks.ReloadEvent += this.OnReload;
         Utils.ConsolePlayer.Instance.SendSuccessMessage($"{this.Name} initialized.");
     }
 
@@ -132,6 +132,11 @@ public partial class Plugin : TerrariaPlugin
         }
     }
 
+    private void OnReload(TShockAPI.Hooks.ReloadEventArgs args)
+    {
+        this.LoadConfig(TShockAPI.TSPlayer.Server);
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (disposing)
@@ -144,6 +149,7 @@ public partial class Plugin : TerrariaPlugin
             OTAPI.Hooks.MessageBuffer.GetData -= this.OTHook_Permission_SummonBoss;
             TShockAPI.GetDataHandlers.TogglePvp.UnRegister(this.GDHook_Permission_TogglePvp);
             TShockAPI.GetDataHandlers.PlayerTeam.UnRegister(this.GDHook_Permission_PlayerTeam);
+            TShockAPI.Hooks.GeneralHooks.ReloadEvent -= this.OnReload;
             var asm = Assembly.GetExecutingAssembly();
             TShockAPI.Commands.ChatCommands.RemoveAll(c => c.CommandDelegate.Method?.DeclaringType?.Assembly == asm);
             foreach (var detour in this._detours.Values)

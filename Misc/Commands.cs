@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+﻿﻿using System.Reflection;
 using Terraria.Localization;
 using TerrariaApi.Server;
 using TShockAPI;
@@ -180,8 +180,8 @@ public partial class Plugin
                 var x = Random.Shared.Next(10, Terraria.Main.maxTilesX - 10);
                 var y = Random.Shared.Next((int) Terraria.Main.worldSurface - 1, Terraria.Main.maxTilesY - 20);
                 Terraria.WorldGen.growGrassUnderground = true;
-                Terraria.WorldGen.UpdateWorld_UndergroundTile(x, y, false, 3);
-                Terraria.WorldGen.UpdateWorld_OvergroundTile(x, y, false, 3);
+                Terraria.WorldGen.UpdateWorld_UndergroundTile(x, y, 3);
+                Terraria.WorldGen.UpdateWorld_OvergroundTile(x, y, 3);
                 Terraria.WorldGen.growGrassUnderground = false;
                 c += 1;
             }

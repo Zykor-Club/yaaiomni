@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+﻿﻿using System.Reflection;
 using Terraria;
 using TerrariaApi.Server;
 using TShockAPI;
@@ -36,6 +36,11 @@ public partial class Plugin : TerrariaPlugin
 
         this.Order = -1_000_000;
         this.ReadConfig(Utils.ConsolePlayer.Instance, true);
+
+        // Register RedirectLanguage BEFORE ResetGameLocale so that SetLanguage's
+        // OnLanguageChanged event triggers the zh-Hans -> zh-CN redirect.
+        // This ensures CurrentUICulture is zh-CN when I18n.C is first accessed.
+        Terraria.Localization.LanguageManager.Instance.OnLanguageChanged += this.RedirectLanguage;
 
         if (this.config.Enhancements.Value.DefaultLanguageDetect)
         {
@@ -94,9 +99,8 @@ public partial class Plugin : TerrariaPlugin
         this.Detour(
             nameof(this.Detour_CheckBan_IP),
             typeof(BanManager)
-                .GetNestedTypes(_bfany)
-                .SelectMany(i => i.GetMethods(_bfany).Where(m => m.Name.Contains("CheckBan")))
-                .FirstOrDefault(),
+                .GetMethods(_bfany)
+                .FirstOrDefault(m => m.Name == "CheckBan"),
             this.Detour_CheckBan_IP);
         this.Detour(
             nameof(this.Detour_HelpAliases),
@@ -335,7 +339,6 @@ public partial class Plugin : TerrariaPlugin
         On.Terraria.WorldGen.nextCount += this.MMHook_Mitigation_WorldGenNextCount;
         On.Terraria.WorldGen.KillTile += this.MMHook_WorldGen_KillTile;
         On.Terraria.WorldGen.TileFrame += this.MMHook_WorldGen_TileFrame;
-        On.Terraria.Chest.ServerPlaceItem += this.MMHook_Chest_ServerPlaceItem;
         On.Terraria.RemoteClient.Reset += this.MMHook_RemoteClient_Reset;
         OTAPI.Hooks.NetMessage.SendBytes += this.OTHook_Ghost_SendBytes;
         OTAPI.Hooks.NetMessage.SendBytes += this.OTHook_DebugPacket_SendBytes;
@@ -359,7 +362,6 @@ public partial class Plugin : TerrariaPlugin
         TShockAPI.GetDataHandlers.Sign.Register(this.GDHook_Permission_Sign);
         TShockAPI.GetDataHandlers.NPCAddBuff.Register(this.GDHook_Mitigation_NpcAddBuff);
         TShockAPI.GetDataHandlers.PlayerBuffUpdate.Register(this.GDHook_Mitigation_PlayerBuffUpdate);
-        Terraria.Localization.LanguageManager.Instance.OnLanguageChanged += this.RedirectLanguage;
     }
 
     protected override void Dispose(bool disposing)
@@ -383,7 +385,6 @@ public partial class Plugin : TerrariaPlugin
             On.Terraria.WorldGen.nextCount -= this.MMHook_Mitigation_WorldGenNextCount;
             On.Terraria.WorldGen.KillTile -= this.MMHook_WorldGen_KillTile;
             On.Terraria.WorldGen.TileFrame -= this.MMHook_WorldGen_TileFrame;
-            On.Terraria.Chest.ServerPlaceItem -= this.MMHook_Chest_ServerPlaceItem;
             On.Terraria.RemoteClient.Reset -= this.MMHook_RemoteClient_Reset;
             OTAPI.Hooks.NetMessage.SendBytes -= this.OTHook_Ghost_SendBytes;
             OTAPI.Hooks.NetMessage.SendBytes -= this.OTHook_DebugPacket_SendBytes;
@@ -419,6 +420,9 @@ public partial class Plugin : TerrariaPlugin
                 hook.Dispose();
             }
             this._manipulators.Clear();
+            AppDomain.CurrentDomain.AssemblyResolve -= this.AssemblyResolveHandler;
+            AppDomain.CurrentDomain.FirstChanceException -= this.FirstChanceExceptionHandler;
+            this.inFirstChance.Dispose();
         }
         base.Dispose(disposing);
     }
