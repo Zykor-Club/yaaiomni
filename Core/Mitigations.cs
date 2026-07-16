@@ -97,7 +97,7 @@ public partial class Plugin
                     break;
                 }
 
-                if (args.Length == 9)
+                if (args.Length >= 9)
                 {
                     var existingItem = Terraria.Main.player[index].GetInventory(slot);
 
